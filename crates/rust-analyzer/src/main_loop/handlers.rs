@@ -969,8 +969,13 @@ pub fn handle_inlay_hints(
     let file_id = params.text_document.try_conv_with(&world)?;
     let analysis = world.analysis();
     let line_index = analysis.file_line_index(file_id)?;
+    let options = ra_ide::InlayHintOptions {
+        max_length: world.options.max_inlay_hint_length,
+        enable_type_hint: params.enable_type_hint,
+        enable_parameter_hint: params.enable_parameter_hint,
+    };
     Ok(analysis
-        .inlay_hints(file_id, world.options.max_inlay_hint_length)?
+        .inlay_hints(file_id, options)?
         .into_iter()
         .map(|api_type| InlayHint {
             label: api_type.label.to_string(),

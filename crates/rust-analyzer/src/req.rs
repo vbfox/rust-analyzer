@@ -193,6 +193,8 @@ impl Request for InlayHints {
 #[serde(rename_all = "camelCase")]
 pub struct InlayHintsParams {
     pub text_document: TextDocumentIdentifier,
+    pub enable_type_hint: bool,
+    pub enable_parameter_hint: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Deserialize, Serialize)]
