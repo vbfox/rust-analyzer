@@ -17,6 +17,12 @@ export interface CargoFeatures {
     allFeatures: boolean;
     features: string[];
 }
+
+export enum InlayHintsType {
+    ParameterName = "parameterName",
+    VariableType = "variableType"
+}
+
 export class Config {
     private static readonly rootSection = "rust-analyzer";
     private static readonly requiresReloadOpts = [
@@ -150,6 +156,7 @@ export class Config {
     get lruCapacity() { return this.cfg.get("lruCapacity") as null | number; }
     get displayInlayHints() { return this.cfg.get("displayInlayHints") as boolean; }
     get maxInlayHintLength() { return this.cfg.get("maxInlayHintLength") as number; }
+    get inlayHintsTypes() { return this.cfg.get("inlayHintsTypes") as readonly InlayHintsType[]; }
     get excludeGlobs() { return this.cfg.get("excludeGlobs") as string[]; }
     get useClientWatching() { return this.cfg.get("useClientWatching") as boolean; }
     get featureFlags() { return this.cfg.get("featureFlags") as Record<string, boolean>; }

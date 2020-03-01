@@ -2,7 +2,8 @@ import * as vscode from 'vscode';
 import * as ra from './rust-analyzer-api';
 
 import { Ctx } from './ctx';
-import { log, sendRequestWithRetry } from './util';
+import { log, sendRequestWithRetry, arrayShallowEqual } from './util';
+import { InlayHintsType } from './config';
 
 export function activateInlayHints(ctx: Ctx) {
     const hintsUpdater = new HintsUpdater(ctx);
@@ -23,7 +24,7 @@ export function activateInlayHints(ctx: Ctx) {
     );
 
     vscode.workspace.onDidChangeConfiguration(
-        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints),
+        async _ => hintsUpdater.setEnabled(ctx.config.displayInlayHints, ctx.config.inlayHintsTypes),
         null,
         ctx.subscriptions
     );
@@ -36,7 +37,7 @@ export function activateInlayHints(ctx: Ctx) {
 
     // XXX: we don't await this, thus Promise rejections won't be handled, but
     // this should never throw in fact...
-    void hintsUpdater.setEnabled(ctx.config.displayInlayHints);
+    void hintsUpdater.setEnabled(ctx.config.displayInlayHints, ctx.config.inlayHintsTypes);
 }
 
 const typeHintDecorationType = vscode.window.createTextEditorDecorationType({
@@ -57,17 +58,29 @@ class HintsUpdater {
     private pending = new Map<string, vscode.CancellationTokenSource>();
     private ctx: Ctx;
     private enabled: boolean;
+    private inlayHintTypes: readonly InlayHintsType[];
+    private showParameterName: boolean;
+    private showVariableType: boolean;
 
     constructor(ctx: Ctx) {
         this.ctx = ctx;
         this.enabled = false;
+        this.inlayHintTypes = [];
+        this.showParameterName = false;
+        this.showVariableType = false;
+
     }
 
-    async setEnabled(enabled: boolean): Promise<void> {
+    async setEnabled(enabled: boolean, inlayHintTypes: readonly InlayHintsType[]): Promise<void> {
         log.debug({ enabled, prev: this.enabled });
 
-        if (this.enabled === enabled) return;
+        if (this.enabled === enabled && arrayShallowEqual(inlayHintTypes, this.inlayHintTypes)) {
+            return;
+        }
         this.enabled = enabled;
+        this.inlayHintTypes = inlayHintTypes;
+        this.showParameterName = inlayHintTypes.some(t => t === InlayHintsType.ParameterName);
+        this.showVariableType = inlayHintTypes.some(t => t === InlayHintsType.VariableType);
 
         if (this.enabled) {
             return await this.refresh();
@@ -98,29 +111,37 @@ class HintsUpdater {
         const newHints = await this.queryHints(editor.document.uri.toString());
         if (newHints == null) return;
 
-        const newTypeDecorations = newHints
-            .filter(hint => hint.kind === ra.InlayKind.TypeHint)
-            .map(hint => ({
-                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
-                renderOptions: {
-                    after: {
-                        contentText: `: ${hint.label}`,
+        if (this.showVariableType) {
+            const newTypeDecorations = newHints
+                .filter(hint => hint.kind === ra.InlayKind.TypeHint)
+                .map(hint => ({
+                    range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
+                    renderOptions: {
+                        after: {
+                            contentText: `: ${hint.label}`,
+                        },
                     },
-                },
-            }));
-        this.setTypeDecorations(editor, newTypeDecorations);
+                }));
+            this.setTypeDecorations(editor, newTypeDecorations);
+        } else {
+            this.setTypeDecorations(editor, []);
+        }
 
-        const newParameterDecorations = newHints
-            .filter(hint => hint.kind === ra.InlayKind.ParameterHint)
-            .map(hint => ({
-                range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
-                renderOptions: {
-                    before: {
-                        contentText: `${hint.label}: `,
+        if (this.showParameterName) {
+            const newParameterDecorations = newHints
+                .filter(hint => hint.kind === ra.InlayKind.ParameterHint)
+                .map(hint => ({
+                    range: this.ctx.client.protocol2CodeConverter.asRange(hint.range),
+                    renderOptions: {
+                        before: {
+                            contentText: `${hint.label}: `,
+                        },
                     },
-                },
-            }));
-        this.setParameterDecorations(editor, newParameterDecorations);
+                }));
+            this.setParameterDecorations(editor, newParameterDecorations);
+        } else {
+            this.setParameterDecorations(editor, []);
+        }
     }
 
     private setTypeDecorations(

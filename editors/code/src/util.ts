@@ -65,3 +65,16 @@ export async function sendRequestWithRetry<TParam, TRet>(
 function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+export function arrayShallowEqual<T>(a: ArrayLike<T>, b: ArrayLike<T>) {
+    if (a === b) return true;
+    if (a.length != b.length) return false;
+
+    for (var i = 0; i < a.length; ++i) {
+        if (a[i] !== b[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
