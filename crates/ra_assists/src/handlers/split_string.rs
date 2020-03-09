@@ -7,6 +7,8 @@ use ra_syntax::{
 
 use crate::{Assist, AssistCtx, AssistId};
 
+const SPLIT_SEPARATOR: &str = "\" + \"";
+
 pub(crate) fn split_string(ctx: AssistCtx) -> Option<Assist> {
     let token = ctx.find_covering_token_at_offset(STRING).and_then(ast::String::cast)?;
     let token_range = token.syntax().text_range();
@@ -24,11 +26,20 @@ pub(crate) fn split_string(ctx: AssistCtx) -> Option<Assist> {
     ctx.add_assist(AssistId("split_string"), "Split string", |edit| {
         // TODO: Handle split on range
         // TODO: Handle no split on range out of string
+        //let selection_length = ctx.frange.range.end() - ctx.frange.range.start();
 
         edit.target(token_range);
-        edit.insert(selection.start(), "\" + \"");
-        // Cursor is placed just before the '+'
-        edit.set_cursor(selection.start() + TextUnit::from(2));
+        edit.insert(selection.start(), SPLIT_SEPARATOR);
+        if selection.start() != selection.end() {
+            edit.insert(selection.end(), SPLIT_SEPARATOR);
+            // Cursor is placed just before the second '+'
+            let selection_length = selection.end() - selection.start();
+            edit.set_cursor(selection.start() + TextUnit::from(7) + selection_length);
+        } else {
+            // Cursor is placed just before the '+'
+            edit.set_cursor(selection.start() + TextUnit::from(2));
+        }
+
     })
 }
 
@@ -86,6 +97,23 @@ mod test {
             r##"
             fn f() {
                 let s = "random" <|>+ "\nstring";
+            }
+            "##,
+        )
+    }
+
+    #[test]
+    fn split_string_works_range_selected() {
+        check_assist(
+            split_string,
+            r#"
+            fn f() {
+                let s = "random<|>\n<|>string";
+            }
+            "#,
+            r##"
+            fn f() {
+                let s = "random" + "\n" <|>+ "string";
             }
             "##,
         )
