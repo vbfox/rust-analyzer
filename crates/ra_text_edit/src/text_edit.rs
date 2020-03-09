@@ -8,7 +8,7 @@ pub struct TextEdit {
     atoms: Vec<AtomTextEdit>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct TextEditBuilder {
     atoms: Vec<AtomTextEdit>,
 }
