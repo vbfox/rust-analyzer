@@ -126,6 +126,15 @@ impl<'a> AssistCtx<'a> {
         self.token_at_offset().find(|it| it.kind() == kind)
     }
 
+    pub(crate) fn find_covering_token_at_offset(&self, kind: SyntaxKind) -> Option<SyntaxToken> {
+        let token = self.token_at_offset().find(|it| it.kind() == kind)?;
+        if self.frange.range.is_subrange(&token.text_range()) {
+            Some(token)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }

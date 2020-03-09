@@ -110,6 +110,7 @@ mod handlers {
     mod introduce_variable;
     mod inline_local_variable;
     mod raw_string;
+    mod split_string;
     mod remove_mut;
     mod replace_if_let_with_match;
     mod split_import;
@@ -148,6 +149,7 @@ mod handlers {
             move_bounds::move_bounds_to_where_clause,
             raw_string::add_hash,
             raw_string::make_raw_string,
+            split_string::split_string,
             raw_string::make_usual_string,
             raw_string::remove_hash,
             remove_mut::remove_mut,
