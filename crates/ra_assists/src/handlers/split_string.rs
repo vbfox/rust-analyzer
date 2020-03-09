@@ -86,6 +86,30 @@ mod test {
     }
 
     #[test]
+    fn split_string_not_applicable_starting_before() {
+        check_assist_not_applicable(
+            split_string,
+            r#"
+            fn f() {
+                let s = <|>"random<|>\nstring";
+            }
+            "#,
+        );
+    }
+
+    #[test]
+    fn split_string_not_applicable_ending_after() {
+        check_assist_not_applicable(
+            split_string,
+            r#"
+            fn f() {
+                let s = "random\n<|>string"<|>;
+            }
+            "#,
+        );
+    }
+
+    #[test]
     fn split_string_works_simple_case() {
         check_assist(
             split_string,
