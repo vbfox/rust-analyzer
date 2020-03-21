@@ -157,6 +157,7 @@ mod handlers {
             early_return::convert_to_guarded_return,
             auto_import::auto_import,
             number_representation::remove_digit_separators,
+            number_representation::separate_number_literal,
         ]
     }
 }
