@@ -116,10 +116,9 @@ fn len_without_separators(text: &str) -> usize {
     return len;
 }
 
-fn separate_number(text: &str, every: usize) -> String {
-    let len = len_without_separators(text);
-    let mut result = String::with_capacity(len + len / every);
-    let offset = every - (len % every);
+fn separate_number(text: &str, every: usize, digits_len: usize) -> String {
+    let mut result = String::with_capacity(digits_len + digits_len / every);
+    let offset = every - (digits_len % every);
     let mut i = 0;
     for c in text.chars() {
         if c != '_' {
@@ -173,11 +172,12 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
     let number_literal = identify_number_literal(&literal)?;
     let details = get_separate_number_details(&number_literal)?;
 
-    if number_literal.text.len() < details.every {
+    let digits_len = len_without_separators(number_literal.text.as_str());
+    if digits_len <= details.every {
         return None
     }
 
-    let result = separate_number(number_literal.text.as_str(), details.every);
+    let result = separate_number(number_literal.text.as_str(), details.every, digits_len);
     if result == number_literal.text.as_str() {
         return None
     }
@@ -276,21 +276,25 @@ mod test {
 
     // ---
 
+    fn separate_number_for_test(text: &str, every: usize) -> String {
+        separate_number(text, every, len_without_separators(text))
+    }
+
     #[test]
     fn test_separate_number() {
-        assert_eq!(separate_number("", 2), "");
-        assert_eq!(separate_number("1", 2), "1");
-        assert_eq!(separate_number("12", 2), "12");
-        assert_eq!(separate_number("12345678", 2), "12_34_56_78");
-        assert_eq!(separate_number("123456789", 2), "1_23_45_67_89");
-        assert_eq!(separate_number("1_2_3_4_5_6_7_8_9", 2), "1_23_45_67_89");
+        assert_eq!(separate_number_for_test("", 2), "");
+        assert_eq!(separate_number_for_test("1", 2), "1");
+        assert_eq!(separate_number_for_test("12", 2), "12");
+        assert_eq!(separate_number_for_test("12345678", 2), "12_34_56_78");
+        assert_eq!(separate_number_for_test("123456789", 2), "1_23_45_67_89");
+        assert_eq!(separate_number_for_test("1_2_3_4_5_6_7_8_9", 2), "1_23_45_67_89");
 
-        assert_eq!(separate_number("", 4), "");
-        assert_eq!(separate_number("1", 4), "1");
-        assert_eq!(separate_number("1212", 4), "1212");
-        assert_eq!(separate_number("24204242420", 4), "242_0424_2420");
-        assert_eq!(separate_number("024204242420", 4), "0242_0424_2420");
-        assert_eq!(separate_number("_0_2_4_2_04242_420", 4), "0242_0424_2420");
+        assert_eq!(separate_number_for_test("", 4), "");
+        assert_eq!(separate_number_for_test("1", 4), "1");
+        assert_eq!(separate_number_for_test("1212", 4), "1212");
+        assert_eq!(separate_number_for_test("24204242420", 4), "242_0424_2420");
+        assert_eq!(separate_number_for_test("024204242420", 4), "0242_0424_2420");
+        assert_eq!(separate_number_for_test("_0_2_4_2_04242_420", 4), "0242_0424_2420");
 
     }
 
@@ -318,6 +322,14 @@ mod test {
         check_assist_not_applicable(
             separate_number_literal,
             r#"fn f() { let x = <|>420;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_decimal_too_small_separator_not_applicable() {
+        check_assist_not_applicable(
+            separate_number_literal,
+            r#"fn f() { let x = <|>4_2_0;}"#,
         );
     }
 
@@ -363,6 +375,14 @@ mod test {
         check_assist_not_applicable(
             separate_number_literal,
             r#"fn f() { let x = <|>0x2420;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_hex_too_small_separator_not_applicable() {
+        check_assist_not_applicable(
+            separate_number_literal,
+            r#"fn f() { let x = <|>0x2_4_2_0;}"#,
         );
     }
 
@@ -418,6 +438,14 @@ mod test {
         check_assist_not_applicable(
             separate_number_literal,
             r#"fn f() { let x = <|>0b00101010;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_binary_too_small_separator_not_applicable() {
+        check_assist_not_applicable(
+            separate_number_literal,
+            r#"fn f() { let x = <|>0b0_0_101_01_0;}"#,
         );
     }
 
