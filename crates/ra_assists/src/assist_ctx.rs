@@ -138,6 +138,16 @@ impl<'a> AssistCtx<'a> {
     pub(crate) fn find_node_at_offset<N: AstNode>(&self) -> Option<N> {
         find_node_at_offset(self.source_file.syntax(), self.frange.range.start())
     }
+
+    pub(crate) fn find_covering_node_at_offset<N: AstNode>(&self) -> Option<N> {
+        let node = find_node_at_offset::<N>(self.source_file.syntax(), self.frange.range.start())?;
+        if self.frange.range.is_subrange(&node.syntax().text_range()) {
+            Some(node)
+        } else {
+            None
+        }
+    }
+
     pub(crate) fn covering_element(&self) -> SyntaxElement {
         find_covering_element(self.source_file.syntax(), self.frange.range)
     }

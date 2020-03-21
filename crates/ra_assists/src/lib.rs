@@ -120,6 +120,7 @@ mod handlers {
     mod move_guard;
     mod move_bounds;
     mod early_return;
+    mod number_representation;
 
     pub(crate) fn all() -> &'static [AssistHandler] {
         &[
@@ -155,6 +156,7 @@ mod handlers {
             remove_mut::remove_mut,
             early_return::convert_to_guarded_return,
             auto_import::auto_import,
+            number_representation::remove_digit_separators,
         ]
     }
 }
