@@ -134,60 +134,68 @@ fn separate_number(text: &str, every: usize, digits_len: usize) -> String {
 }
 
 #[derive(Clone, Debug)]
-struct SeparateNumberDetails {
+struct PossibleSeparateNumberAssist {
     id: AssistId,
     label: String,
     every: usize
 }
 
-fn get_separate_number_details(literal: &NumberLiteral) -> Option<SeparateNumberDetails> {
+fn get_possible_separate_number_assist(literal: &NumberLiteral) -> Vec<PossibleSeparateNumberAssist> {
     match literal.number_type {
         NumberLiteralType::Decimal => {
-            Some(SeparateNumberDetails {
+            vec![PossibleSeparateNumberAssist {
                 id: AssistId("separate_decimal_thousands"),
                 label: "Separate thousands".to_string(),
                 every: 3,
-            })
+            }]
         },
         NumberLiteralType::PrefixHex => {
-            Some(SeparateNumberDetails {
+            vec![PossibleSeparateNumberAssist {
                 id: AssistId("separate_hexadecimal_word"),
                 label: "Separate 16-bits words".to_string(),
                 every: 4,
-            })
+            }]
         },
         NumberLiteralType::PrefixBinary => {
-            Some(SeparateNumberDetails {
+            vec![PossibleSeparateNumberAssist {
                 id: AssistId("separate_binary_bytes"),
                 label: "Separate bytes".to_string(),
                 every: 8,
-            })
+            }]
         },
-        _ => None
+        _ => Vec::default()
     }
 }
 
 pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
     let literal = ctx.find_covering_node_at_offset::<ast::Literal>()?;
     let number_literal = identify_number_literal(&literal)?;
-    let details = get_separate_number_details(&number_literal)?;
-
-    let digits_len = len_without_separators(number_literal.text.as_str());
-    if digits_len <= details.every {
+    let possible_assists = get_possible_separate_number_assist(&number_literal);
+    if possible_assists.len() == 0 {
         return None
     }
 
-    let result = separate_number(number_literal.text.as_str(), details.every, digits_len);
-    if result == number_literal.text.as_str() {
-        return None
+    let mut assist_group = ctx.add_assist_group("separate_number_literal");
+    for possible_assist in possible_assists {
+        let digits_len = len_without_separators(number_literal.text.as_str());
+        if digits_len <= possible_assist.every {
+            return None
+        }
+
+        let result = separate_number(number_literal.text.as_str(), possible_assist.every, digits_len);
+        if result == number_literal.text.as_str() {
+            return None
+        }
+
+        assist_group.add_assist(possible_assist.id, possible_assist.label, |edit| {
+            edit.target(literal.syntax().text_range());
+            let new_literal = NumberLiteral { text: SmolStr::new(result), ..number_literal.clone() };
+            let new_text = new_literal.to_string();
+            edit.replace(literal.syntax().text_range(), new_text);
+        })
     }
 
-    ctx.add_assist(details.id, details.label, |edit| {
-        edit.target(literal.syntax().text_range());
-        let new_literal = NumberLiteral { text: SmolStr::new(result), ..number_literal };
-        let new_text = new_literal.to_string();
-        edit.replace(literal.syntax().text_range(), new_text);
-    })
+    assist_group.finish()
 }
 
 #[cfg(test)]
