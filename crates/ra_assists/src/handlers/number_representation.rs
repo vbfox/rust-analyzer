@@ -13,11 +13,11 @@ enum NumberLiteralType {
     /// A literal without prefix, '42'
     Decimal,
     /// Hexadecimal literal, '0x2A'
-    PrefixHex,
+    Hexadecimal,
     /// Octal literal, '0o52'
-    PrefixOctal,
+    Octal,
     /// Binary literal, '0b00101010'
-    PrefixBinary,
+    Binary,
 }
 
 #[derive(Clone, Debug)]
@@ -58,9 +58,9 @@ fn identify_number_literal(literal: &ast::Literal) -> Option<NumberLiteral> {
             let non_suffix = &full_text[0..full_text.len() - suffix_len];
             let maybe_prefix = if non_suffix.len() < 2 { None } else { Some(&non_suffix[0..2]) };
             let (prefix, number_type) = match maybe_prefix {
-                Some("0x") => (maybe_prefix, NumberLiteralType::PrefixHex),
-                Some("0b") => (maybe_prefix, NumberLiteralType::PrefixBinary),
-                Some("0o") => (maybe_prefix, NumberLiteralType::PrefixOctal),
+                Some("0x") => (maybe_prefix, NumberLiteralType::Hexadecimal),
+                Some("0b") => (maybe_prefix, NumberLiteralType::Binary),
+                Some("0o") => (maybe_prefix, NumberLiteralType::Octal),
                 _ => (None, NumberLiteralType::Decimal),
             };
             let prefix_len = prefix.map(|s| s.len()).unwrap_or_default();
@@ -146,7 +146,6 @@ const SEPARATE_HEXADECIMAL_BYTES_ID: AssistId = AssistId("separate_hexadecimal_b
 const SEPARATE_BINARY_BYTES_ID: AssistId = AssistId("separate_binary_bytes");
 const SEPARATE_BINARY_NIBBLES_ID: AssistId = AssistId("separate_binary_nibbles");
 
-
 fn get_possible_separate_number_assist(literal: &NumberLiteral) -> Vec<PossibleSeparateNumberAssist> {
     match literal.number_type {
         NumberLiteralType::Decimal => {
@@ -156,7 +155,7 @@ fn get_possible_separate_number_assist(literal: &NumberLiteral) -> Vec<PossibleS
                 every: 3,
             }]
         },
-        NumberLiteralType::PrefixHex => {
+        NumberLiteralType::Hexadecimal => {
             vec![
                 PossibleSeparateNumberAssist {
                     id: SEPARATE_HEXADECIMAL_WORDS_ID,
@@ -170,7 +169,7 @@ fn get_possible_separate_number_assist(literal: &NumberLiteral) -> Vec<PossibleS
                 }
             ]
         },
-        NumberLiteralType::PrefixBinary => {
+        NumberLiteralType::Binary => {
             vec![
                 PossibleSeparateNumberAssist {
                     id: SEPARATE_BINARY_BYTES_ID,
