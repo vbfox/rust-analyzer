@@ -196,7 +196,7 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
         return None
     }
 
-    let mut assist_group = ctx.add_assist_group("separate_number_literal");
+    let mut assists = ctx.add_assists();
     for possible_assist in possible_assists {
         let digits_len = len_without_separators(number_literal.text.as_str());
         if digits_len <= possible_assist.every {
@@ -208,7 +208,7 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
             continue;
         }
 
-        assist_group.add_assist(possible_assist.id, possible_assist.label, |edit| {
+        assists.add_assist(possible_assist.id, possible_assist.label, |edit| {
             edit.target(literal.syntax().text_range());
             let new_literal = NumberLiteral { text: SmolStr::new(result), ..number_literal.clone() };
             let new_text = new_literal.to_string();
@@ -216,7 +216,7 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
         })
     }
 
-    assist_group.finish()
+    assists.finish()
 }
 
 #[cfg(test)]
