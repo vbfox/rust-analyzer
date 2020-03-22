@@ -140,28 +140,49 @@ struct PossibleSeparateNumberAssist {
     every: usize
 }
 
+const SEPARATE_DECIMAL_THOUSANDS_ID: AssistId = AssistId("separate_decimal_thousands");
+const SEPARATE_HEXADECIMAL_WORDS_ID: AssistId = AssistId("separate_hexadecimal_words");
+const SEPARATE_HEXADECIMAL_BYTES_ID: AssistId = AssistId("separate_hexadecimal_bytes");
+const SEPARATE_BINARY_BYTES_ID: AssistId = AssistId("separate_binary_bytes");
+const SEPARATE_BINARY_NIBBLES_ID: AssistId = AssistId("separate_binary_nibbles");
+
+
 fn get_possible_separate_number_assist(literal: &NumberLiteral) -> Vec<PossibleSeparateNumberAssist> {
     match literal.number_type {
         NumberLiteralType::Decimal => {
             vec![PossibleSeparateNumberAssist {
-                id: AssistId("separate_decimal_thousands"),
+                id: SEPARATE_DECIMAL_THOUSANDS_ID,
                 label: "Separate thousands".to_string(),
                 every: 3,
             }]
         },
         NumberLiteralType::PrefixHex => {
-            vec![PossibleSeparateNumberAssist {
-                id: AssistId("separate_hexadecimal_word"),
-                label: "Separate 16-bits words".to_string(),
-                every: 4,
-            }]
+            vec![
+                PossibleSeparateNumberAssist {
+                    id: SEPARATE_HEXADECIMAL_WORDS_ID,
+                    label: "Separate 16-bits words".to_string(),
+                    every: 4,
+                },
+                PossibleSeparateNumberAssist {
+                    id: SEPARATE_HEXADECIMAL_BYTES_ID,
+                    label: "Separate bytes".to_string(),
+                    every: 2,
+                }
+            ]
         },
         NumberLiteralType::PrefixBinary => {
-            vec![PossibleSeparateNumberAssist {
-                id: AssistId("separate_binary_bytes"),
-                label: "Separate bytes".to_string(),
-                every: 8,
-            }]
+            vec![
+                PossibleSeparateNumberAssist {
+                    id: SEPARATE_BINARY_BYTES_ID,
+                    label: "Separate bytes".to_string(),
+                    every: 8,
+                },
+                PossibleSeparateNumberAssist {
+                    id: SEPARATE_BINARY_NIBBLES_ID,
+                    label: "Separate nibbles".to_string(),
+                    every: 4,
+                }
+            ]
         },
         _ => Vec::default()
     }
@@ -179,12 +200,12 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
     for possible_assist in possible_assists {
         let digits_len = len_without_separators(number_literal.text.as_str());
         if digits_len <= possible_assist.every {
-            return None
+            continue;
         }
 
         let result = separate_number(number_literal.text.as_str(), possible_assist.every, digits_len);
         if result == number_literal.text.as_str() {
-            return None
+            continue;
         }
 
         assist_group.add_assist(possible_assist.id, possible_assist.label, |edit| {
@@ -201,7 +222,7 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target};
+    use crate::helpers::{check_assist, check_assist_not_applicable, check_assist_target, check_assist_target_with_id, check_assist_with_id, check_assist_not_applicable_with_id};
 
     #[test]
     fn remove_digit_separators_target() {
@@ -362,53 +383,118 @@ mod test {
     // ---
 
     #[test]
-    fn separate_number_literal_hex_target() {
-        check_assist_target(
+    fn separate_number_literal_hex_words_target() {
+        check_assist_target_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x04242420; }"#,
             r#"0x04242420"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_hex_already_split_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_hex_words_already_split_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x0424_2420; <|>}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_hex_too_small_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_hex_words_too_small_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x2420;}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_hex_too_small_separator_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_hex_words_too_small_separator_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x2_4_2_0;}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_hex() {
-        check_assist(
+    fn separate_number_literal_hex_words() {
+        check_assist_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x24204242420; }"#,
             r#"fn f() { let x = <|>0x242_0424_2420; }"#,
         )
     }
 
     #[test]
-    fn separate_number_literal_hex_badly_split() {
-        check_assist(
+    fn separate_number_literal_hex_words_badly_split() {
+        check_assist_with_id(
             separate_number_literal,
+            SEPARATE_HEXADECIMAL_WORDS_ID,
             r#"fn f() { let x = <|>0x2_4204_24_2420; }"#,
             r#"fn f() { let x = <|>0x242_0424_2420; }"#,
+        )
+    }
+
+    // ---
+
+    #[test]
+    fn separate_number_literal_hex_bytes_target() {
+        check_assist_target_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x04242420; }"#,
+            r#"0x04242420"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_hex_bytes_already_split_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x04_24_24_20; <|>}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_hex_bytes_too_small_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x20;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_hex_bytes_too_small_separator_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x2_0;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_hex_bytes() {
+        check_assist_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x24204242420; }"#,
+            r#"fn f() { let x = <|>0x2_42_04_24_24_20; }"#,
+        )
+    }
+
+    #[test]
+    fn separate_number_literal_hex_bytes_badly_split() {
+        check_assist_with_id(
+            separate_number_literal,
+            SEPARATE_HEXADECIMAL_BYTES_ID,
+            r#"fn f() { let x = <|>0x2_4_2_04242420; }"#,
+            r#"fn f() { let x = <|>0x2_42_04_24_24_20; }"#,
         )
     }
 
@@ -425,51 +511,117 @@ mod test {
     // ---
 
     #[test]
-    fn separate_number_literal_binary_target() {
-        check_assist_target(
+    fn separate_number_literal_binary_nibbles_target() {
+        check_assist_target_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            //r#"fn f() { let x = <|>0b00101010; }"#,
+            r#"fn f() { let x = <|>0b00101010; }"#,
+            r#"0b00101010"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_binary_nibbles_already_split_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            r#"fn f() { let x = <|>0b0010_1010_0010_1010; <|>}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_binary_nibbles_too_small_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            r#"fn f() { let x = <|>0b1010;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_binary_nibbles_too_small_separator_not_applicable() {
+        check_assist_not_applicable_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            r#"fn f() { let x = <|>0b1_01_0;}"#,
+        );
+    }
+
+    #[test]
+    fn separate_number_literal_binary_nibbles() {
+        check_assist_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            r#"fn f() { let x = <|>0b0010101000101010; }"#,
+            r#"fn f() { let x = <|>0b0010_1010_0010_1010; }"#,
+        )
+    }
+
+    #[test]
+    fn separate_number_literal_binary_nibbles_badly_split() {
+        check_assist_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_NIBBLES_ID,
+            r#"fn f() { let x = <|>0b001_0101_000_101_010; }"#,
+            r#"fn f() { let x = <|>0b0010_1010_0010_1010; }"#,
+        )
+    }
+
+    // ---
+
+    #[test]
+    fn separate_number_literal_binary_bytes_target() {
+        check_assist_target_with_id(
+            separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b0010101000101010; }"#,
             r#"0b0010101000101010"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_binary_already_split_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_binary_bytes_already_split_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b00101010_00101010; <|>}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_binary_too_small_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_binary_bytes_too_small_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b00101010;}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_binary_too_small_separator_not_applicable() {
-        check_assist_not_applicable(
+    fn separate_number_literal_binary_bytes_too_small_separator_not_applicable() {
+        check_assist_not_applicable_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b0_0_101_01_0;}"#,
         );
     }
 
     #[test]
-    fn separate_number_literal_binary() {
-        check_assist(
+    fn separate_number_literal_binary_bytes() {
+        check_assist_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b0010101000101010; }"#,
             r#"fn f() { let x = <|>0b00101010_00101010; }"#,
         )
     }
 
     #[test]
-    fn separate_number_literal_binary_badly_split() {
-        check_assist(
+    fn separate_number_literal_binary_bytes_badly_split() {
+        check_assist_with_id(
             separate_number_literal,
+            SEPARATE_BINARY_BYTES_ID,
             r#"fn f() { let x = <|>0b001_0101_000_101_010; }"#,
             r#"fn f() { let x = <|>0b00101010_00101010; }"#,
         )
