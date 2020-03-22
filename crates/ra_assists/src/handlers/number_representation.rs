@@ -29,7 +29,7 @@ struct NumberLiteral {
     /// The prefix as string, for example '0x'
     prefix: Option<SmolStr>,
     /// Text of the literal
-    text: SmolStr,
+    text: String,
 }
 
 impl fmt::Display for NumberLiteral {
@@ -70,7 +70,7 @@ fn identify_number_literal(literal: &ast::Literal) -> Option<NumberLiteral> {
                 number_type,
                 suffix: suffix_clone,
                 prefix: prefix.map(SmolStr::new),
-                text: SmolStr::new(text),
+                text: text.to_string(),
             };
             Some(result)
         },
@@ -210,7 +210,7 @@ pub(crate) fn separate_number_literal(ctx: AssistCtx) -> Option<Assist> {
 
         assists.add_assist(possible_assist.id, possible_assist.label, |edit| {
             edit.target(literal.syntax().text_range());
-            let new_literal = NumberLiteral { text: SmolStr::new(result), ..number_literal.clone() };
+            let new_literal = NumberLiteral { text: result, ..number_literal.clone() };
             let new_text = new_literal.to_string();
             edit.replace(literal.syntax().text_range(), new_text);
         })
